@@ -3,4 +3,4 @@ jdk:
   - openjdk7
   - oraclejdk7
   - oraclejdk8
-mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+script: mvn clean install -DskipTests=true -Dmaven.javadoc.skip=true -B -V
