@@ -39,62 +39,62 @@ public class SpringRootConfig {
         return driverManagerDataSource;
     }
 
-    @Bean
-    public ConnectionFactory connectionFactory() {
-        CachingConnectionFactory connectionFactory = new CachingConnectionFactory(env.getProperty("mq.url"));
-        connectionFactory.setUsername(env.getProperty("mq.username"));
-        connectionFactory.setPassword(env.getProperty("mq.password"));
-        return connectionFactory;
-    }
-
-    @Bean
-    public AmqpAdmin amqpAdmin() {
-        return new RabbitAdmin(connectionFactory());
-    }
-
-    @Bean
-    public RabbitTemplate rabbitTemplate() {
-        RabbitTemplate template = new RabbitTemplate(connectionFactory());
-        //The routing key is set to the name of the queue by the broker for the default exchange.
-        template.setRoutingKey(TEST_SPRING_MSG);
-        //Where we will synchronously receive messages from
-        template.setQueue(TEST_SPRING_MSG);
-        return template;
-    }
-
-
-    @Bean
-    Queue queue() {
-        return new Queue(TEST_SPRING_MSG, true, false, false);
-    }
-
-    @Bean
-    TopicExchange exchange() {
-        return new TopicExchange(TEST_SPRING_EXCHANGE, true, false);
-    }
-
-    @Bean
-    Binding binding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with(TEST_SPRING_MSG);
-    }
-
-    @Bean
-    SimpleMessageListenerContainer container(ConnectionFactory connectionFactory, MessageListenerAdapter listenerAdapter) {
-        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
-        container.setConnectionFactory(connectionFactory);
-        container.setQueueNames(TEST_SPRING_MSG);
-        container.setMessageListener(listenerAdapter);
-        return container;
-    }
-
-    @Bean
-    MQReceiver receiver() {
-        return new MQReceiver();
-    }
-
-    @Bean
-    MessageListenerAdapter listenerAdapter(MQReceiver receiver) {
-        return new MessageListenerAdapter(receiver, "receiveMessage");
-    }
+//    @Bean
+//    public ConnectionFactory connectionFactory() {
+//        CachingConnectionFactory connectionFactory = new CachingConnectionFactory(env.getProperty("mq.url"));
+//        connectionFactory.setUsername(env.getProperty("mq.username"));
+//        connectionFactory.setPassword(env.getProperty("mq.password"));
+//        return connectionFactory;
+//    }
+//
+//    @Bean
+//    public AmqpAdmin amqpAdmin() {
+//        return new RabbitAdmin(connectionFactory());
+//    }
+//
+//    @Bean
+//    public RabbitTemplate rabbitTemplate() {
+//        RabbitTemplate template = new RabbitTemplate(connectionFactory());
+//        //The routing key is set to the name of the queue by the broker for the default exchange.
+//        template.setRoutingKey(TEST_SPRING_MSG);
+//        //Where we will synchronously receive messages from
+//        template.setQueue(TEST_SPRING_MSG);
+//        return template;
+//    }
+//
+//
+//    @Bean
+//    Queue queue() {
+//        return new Queue(TEST_SPRING_MSG, true, false, false);
+//    }
+//
+//    @Bean
+//    TopicExchange exchange() {
+//        return new TopicExchange(TEST_SPRING_EXCHANGE, true, false);
+//    }
+//
+//    @Bean
+//    Binding binding(Queue queue, TopicExchange exchange) {
+//        return BindingBuilder.bind(queue).to(exchange).with(TEST_SPRING_MSG);
+//    }
+//
+//    @Bean
+//    SimpleMessageListenerContainer container(ConnectionFactory connectionFactory, MessageListenerAdapter listenerAdapter) {
+//        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
+//        container.setConnectionFactory(connectionFactory);
+//        container.setQueueNames(TEST_SPRING_MSG);
+//        container.setMessageListener(listenerAdapter);
+//        return container;
+//    }
+//
+//    @Bean
+//    MQReceiver receiver() {
+//        return new MQReceiver();
+//    }
+//
+//    @Bean
+//    MessageListenerAdapter listenerAdapter(MQReceiver receiver) {
+//        return new MessageListenerAdapter(receiver, "receiveMessage");
+//    }
 
 }

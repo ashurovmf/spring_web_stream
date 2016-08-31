@@ -17,13 +17,17 @@ import org.springframework.web.servlet.view.JstlView;
 @EnableWebMvc //<mvc:annotation-driven />
 @Configuration
 @ComponentScan({ "com.gft.backend" })
-@Import({ WebSecurityConfig.class })
+@Import({ WebSecurityConfig.class, AppWebSocketConfig.class })
 public class SpringWebConfig extends WebMvcConfigurerAdapter {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/resources/**")
                 .addResourceLocations("/resources/");
+        if (!registry.hasMappingForPattern("/js/**")) {
+            registry.addResourceHandler("/js/**").addResourceLocations(
+                    "/WEB-INF/js/");
+        }
     }
 
     @Bean

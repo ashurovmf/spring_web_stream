@@ -1,7 +1,6 @@
 package com.gft.backend.controllers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,12 +22,11 @@ import javax.servlet.http.HttpServletResponse;
 @RequestMapping("/")
 public class FirstShowController {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(FirstShowController.class);
+    private static final Logger logger = Logger.getLogger(FirstShowController.class);
 
     @RequestMapping(method = RequestMethod.GET)
     public ModelAndView toShowHelloPage() {
-        logger.debug("welcome() is executed, value {}", "first");
+        logger.debug("welcome() is executed, value first");
         ModelAndView model = new ModelAndView();
         model.addObject("title", "Home page");
         model.addObject("message", "This is main page for all users");
@@ -98,6 +96,13 @@ public class FirstShowController {
         }
 
         model.setViewName("403");
+        return model;
+    }
+
+    @RequestMapping(value="/folder", method = RequestMethod.GET)
+    public ModelAndView folderPage () {
+        ModelAndView model = new ModelAndView();
+        model.setViewName("folder");
         return model;
     }
 
