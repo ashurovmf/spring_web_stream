@@ -2,9 +2,10 @@ package com.gft.backend.controllers;
 
 import com.gft.backend.entities.FolderList;
 import com.gft.backend.entities.FolderNameSearch;
+import com.gft.backend.entities.TreeFileSystemNode;
+import com.gft.backend.utils.TreeFileSystemNodeRepresenter;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.core.MessageSendingOperations;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -39,7 +40,7 @@ public class WebSocketController {
         }
     }
 
-    @Scheduled(fixedRate = 100)
+    @Scheduled(fixedRate = 500)
     @SendTo("/topic/show")
     public void sendListOfFiles(){
         logger.debug("$Scheduler is triggered");
@@ -55,18 +56,37 @@ public class WebSocketController {
 
     public String[] listFilesAndFolders(String directoryName){
         logger.debug("Try to get file from " + directoryName);
-        File directory = new File("c:/");
+        String searchPath = "c:/";
         if(directoryName != null && !directoryName.isEmpty()) {
-            directory = new File("c:/" + directoryName);
+            searchPath += directoryName;
         }
-        //get all the files from a directory
-        File[] fList = directory.listFiles();
-        List<String> buff = new ArrayList<>(fList.length);
-        for (File file : fList){
-            buff.add(file.getName());
-        }
-        String[] result = new String[buff.size()];
-        result = buff.toArray(result);
+
+        TreeFileSystemNode<String> rootNode = new TreeFileSystemNode<>();
+        rootNode.setDirectory(true);
+        rootNode.setLevel(0);
+        recursiveScanDirs(rootNode,searchPath);
+
+        String[] result = TreeFileSystemNodeRepresenter.convertToStringArray(rootNode);
         return result;
+    }
+
+    public TreeFileSystemNode<String> recursiveScanDirs(TreeFileSystemNode<String> rootNode, String directoryName){
+        File directory = new File(directoryName);
+        rootNode.setData(directory.getName());
+
+        File[] fList = directory.listFiles();
+        for (File file : fList){
+            TreeFileSystemNode<String> childNode = new TreeFileSystemNode<>(file.getName());
+
+            if(file.isDirectory()){
+                childNode.setDirectory(true);
+                rootNode.addChild(childNode);
+                recursiveScanDirs(childNode,directoryName+"/" +file.getName());
+            }
+            else {
+                rootNode.addChild(childNode);
+            }
+        }
+        return rootNode;
     }
 }

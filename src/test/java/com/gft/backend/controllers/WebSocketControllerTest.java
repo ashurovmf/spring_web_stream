@@ -3,10 +3,10 @@ package com.gft.backend.controllers;
 import com.gft.backend.configs.SpringWebConfig;
 import com.gft.backend.entities.FolderList;
 import com.gft.backend.entities.FolderNameSearch;
+import com.gft.backend.entities.TreeFileSystemNode;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +41,8 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -49,6 +51,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Created by miav on 2016-08-30.
@@ -56,7 +59,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(loader= AnnotationConfigWebContextLoader.class, classes = {SpringWebConfig.class})
 @WebAppConfiguration
-public class WebStreamControllerTest {
+public class WebSocketControllerTest {
+
+    public static final String C_TEMP1 = "temp1";
+    public static final String C_TEMP1_PATH = "c:/"+C_TEMP1;
 
     class FolderNameHandler implements StompSessionHandler {
 
@@ -156,7 +162,7 @@ public class WebStreamControllerTest {
     }
 
 
-    private static final Logger logger = Logger.getLogger(WebStreamControllerTest.class);
+    private static final Logger logger = Logger.getLogger(WebSocketControllerTest.class);
 
     @Autowired
     WebApplicationContext wac;
@@ -165,7 +171,7 @@ public class WebStreamControllerTest {
 
     @Before
     public void setup() {
-        File parentDir = new File("c:/temp");
+        File parentDir = new File(C_TEMP1_PATH);
         boolean created = false;
         if(!parentDir.exists()){
              created = parentDir.mkdir();
@@ -181,9 +187,17 @@ public class WebStreamControllerTest {
                 if(newFile){
                     file = new File(path + "/second.txt");
                     file.createNewFile();
+                    file = new File(path + "/second_level");
+                    newFile = file.mkdir();
+                    path = file.getPath();
+                    if(newFile){
+                        file = new File(path + "/photo.bmp");
+                        file.createNewFile();
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+                System.out.println("Creating failed:" + e.getMessage());
             }
         }
 
@@ -192,9 +206,25 @@ public class WebStreamControllerTest {
 
     @After
     public void clean(){
-        File parentDir = new File("c:/temp");
-        for (File file: parentDir.listFiles()) {
-            file.delete();
+        Path parentDir = Paths.get(C_TEMP1_PATH);
+        try {
+            Files.walkFileTree(parentDir, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Deleting failed:" + e.getMessage());
         }
     }
 
@@ -240,7 +270,7 @@ public class WebStreamControllerTest {
             System.out.println("Subscribed");
 
             FolderNameSearch message = new FolderNameSearch();
-            message.setFolderName("temp");
+            message.setFolderName(C_TEMP1);
             folderHandler.session.send("/list/add", message);
             System.out.println("Message is sent");
 
@@ -252,9 +282,12 @@ public class WebStreamControllerTest {
             System.out.println("Message is sent");
 
             stompClient.stop();
-            assertEquals(2,fList.length);
-            assertTrue("First file is 1.txt", "1.txt".equals(fList[0]));
-            assertTrue("Second file is second.txt", "second.txt".equals(fList[1]));
+            assertEquals(5,fList.length);
+            assertTrue("Root directory", "|->[temp1]".equals(fList[0]));
+            assertTrue("First file is 1.txt", "___|->1.txt".equals(fList[1]));
+            assertTrue("Second file is second.txt", "___|->second.txt".equals(fList[2]));
+            assertTrue("Subdirectory is", "___|->[second_level]".equals(fList[3]));
+            assertTrue("The file contained in subdirectory", "______|->photo.bmp".equals(fList[4]));
         }
         catch (Exception ex)
         {
@@ -263,67 +296,22 @@ public class WebStreamControllerTest {
         assertTrue("STOMP TEST", true);
     }
 
-//    @Test
-//    public void sendMessageToBrokerAndReceiveReplyViaTopic() throws Exception {
-//        System.out.println("Stomp client is trying to connect ");
-//        try {
-//            StompClient stompClient = new StompClient("ws://localhost:8080/webstream/add"); // /webstream/add
-//            System.out.println("Stomp client is created ");
-//            stompClient.connect();
-//            System.out.println("Stomp client is connected ");
-//            MessageAccumulator handler = new MessageAccumulator();
-//            ClientSubscription subscription =
-//                    stompClient.subscribe( "/topic/show" )
-//                            .withMessageHandler( handler )
-//                            .withAckMode( Subscription.AckMode.AUTO )
-//                            .start();
-//            System.out.println("Subscribed");
-//            ClientTransaction tx = stompClient.begin();
-//            tx.send(
-//                    StompMessages.createStompMessage( "/topic/add", "{\"folderName\":\"temp\"}")
-//            );
-//            tx.commit();
-//
-//            System.out.println("Message is sent");
-//            wait(1000);
-//            subscription.unsubscribe();
-//            List<StompMessage> messages = handler.getMessages();
-//            stompClient.disconnect();
-//            assertTrue("Connection", true);
-//        }
-//        catch (Exception ex)
-//        {
-//            logger.error(ex.getMessage(),ex);
-//        }
-//        assertTrue("STOMP TEST", true);
-//    }
+    @Test
+    public void searchRecursivelyInFolder() throws Exception {
+        WebSocketController socketController = wac.getBean(WebSocketController.class);
+        TreeFileSystemNode<String> root = new TreeFileSystemNode<>();
+        TreeFileSystemNode<String> node = socketController.recursiveScanDirs(root,C_TEMP1_PATH);
+        assertTrue("temp1".equals(node.getData()));
+        assertEquals(3,node.childCount());
+    }
 
 
-//    @Test
-//    public void sendMessageToBrokerAndReceiveReplyViaTopic() throws Exception {
-//        System.out.println("Stomp client is trying to connect ");
-//        Client stompClient = new Client( "localhost", 61626, null, null);
-//        System.out.println("Stomp client is created ");
-//        stompClient.subscribe( "/topic/show", new Listener() {
-//                    public void message(Map header, String body ) {
-//                        System.out.println("Get message from stomp server " + body);
-//                        if (body.equals( "get-info" )) {
-//                            // Send some message to the clients with info about the server
-//                        }
-//
-//                    } } );
-//        stompClient.sendW("/topic/add", "{\"folderName\":\"temp\"}");
-//        System.out.println("Message is sent");
-//        wait(3000);
-//        stompClient.disconnect();
-//        assertTrue("Connection", true);
-//    }
-
-    @Ignore
+    //@Ignore
     @Test
     @WithMockUser
     public void toShowFolderPage() throws Exception {
         mockMvc.perform(get("/folder"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(view().name("folder"));
     }
 }
