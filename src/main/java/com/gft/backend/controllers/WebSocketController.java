@@ -1,20 +1,20 @@
 package com.gft.backend.controllers;
 
-import com.gft.backend.entities.FolderList;
+import com.gft.backend.entities.FileStateMessage;
 import com.gft.backend.entities.FolderNameSearch;
-import com.gft.backend.entities.TreeFileSystemNode;
 import com.gft.backend.utils.TreeFileSystemNodeRepresenter;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
+import rx.functions.Action1;
 
-import java.io.File;
-import java.util.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Created by miav on 2016-08-29.
@@ -28,65 +28,58 @@ public class WebSocketController {
     private volatile String folderName = null;
 
     @Autowired
+    private FileSystemService fileService;
+
+    @Autowired
     private SimpMessagingTemplate simpMessagingTemplate;
 
     @MessageMapping("/add")
     public void fetchFolder(FolderNameSearch folderNameSearch){
-        logger.debug("$Receive message with content" + folderNameSearch.getFolderName());
+        logger.debug("$Receive message with content:" + folderNameSearch.getFolderName());
         if("#".equals(folderNameSearch.getFolderName())) {
             folderName = null;
         } else {
             folderName = new String(folderNameSearch.getFolderName());
+            fileService.getFolderWatcherStream().subscribe(new Action1<FileStateMessage>() {
+                @Override
+                public void call(FileStateMessage message) {
+                    simpMessagingTemplate.convertAndSend("/topic/show", message);
+                    logger.debug("$Send content of " + message.getFileName());
+                }
+            });
+            Path rootPath = Paths.get("c:/" + folderName);
+            fileService.getFileHierarchyBasedOnPath(rootPath);
         }
     }
 
-    @Scheduled(fixedRate = 500)
-    @SendTo("/topic/show")
-    public void sendListOfFiles(){
-        logger.debug("$Scheduler is triggered");
-        if(folderName != null) {
-            logger.debug("$Send content of " + folderName);
-            FolderList list = new FolderList();
-            String[] myList = listFilesAndFolders(folderName);
-            list.setfList(myList);
-            simpMessagingTemplate.convertAndSend("/topic/show", list);
-        }
+//    @Scheduled(fixedRate = 500)
+//    @SendTo("/topic/show")
+//    public void sendListOfFiles(){
+//        if(folderName != null) {
+//            try {
+//                logger.debug("$Send content of " + folderName);
+//                FolderList list = new FolderList();
+//                String[] myList = listFilesViaStream(folderName);
+//                list.setfList(myList);
+//                simpMessagingTemplate.convertAndSend("/topic/show", list);
+//            } catch (IOException e) {
+//                logger.error(e);
+//                folderName = null;
+//            }
+//        }
+//    }
 
-    }
 
-    public String[] listFilesAndFolders(String directoryName){
-        logger.debug("Try to get file from " + directoryName);
+
+    public String[] listFilesViaStream(String directoryName) throws IOException {
+        logger.debug("Try to get stream from " + directoryName);
         String searchPath = "c:/";
-        if(directoryName != null && !directoryName.isEmpty()) {
-            searchPath += directoryName;
-        }
-
-        TreeFileSystemNode<String> rootNode = new TreeFileSystemNode<>();
-        rootNode.setDirectory(true);
-        rootNode.setLevel(0);
-        recursiveScanDirs(rootNode,searchPath);
-
-        String[] result = TreeFileSystemNodeRepresenter.convertToStringArray(rootNode);
+        Path rootPath = Paths.get(searchPath + directoryName);
+        String[] paths = Files.walk(rootPath)
+                .map(TreeFileSystemNodeRepresenter::representPathToString)
+                .toArray(size -> new String[size]);
+        String[] result = paths;
         return result;
     }
 
-    public TreeFileSystemNode<String> recursiveScanDirs(TreeFileSystemNode<String> rootNode, String directoryName){
-        File directory = new File(directoryName);
-        rootNode.setData(directory.getName());
-
-        File[] fList = directory.listFiles();
-        for (File file : fList){
-            TreeFileSystemNode<String> childNode = new TreeFileSystemNode<>(file.getName());
-
-            if(file.isDirectory()){
-                childNode.setDirectory(true);
-                rootNode.addChild(childNode);
-                recursiveScanDirs(childNode,directoryName+"/" +file.getName());
-            }
-            else {
-                rootNode.addChild(childNode);
-            }
-        }
-        return rootNode;
-    }
 }

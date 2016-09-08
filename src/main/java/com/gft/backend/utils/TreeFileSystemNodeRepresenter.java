@@ -2,6 +2,7 @@ package com.gft.backend.utils;
 
 import com.gft.backend.entities.TreeFileSystemNode;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,5 +36,15 @@ public class TreeFileSystemNodeRepresenter {
             for (TreeFileSystemNode<String> child : rootNode)
                 recursiveRoundTree(child,buffer);
         }
+    }
+
+    public static String representPathToString(Path path){
+        StringBuilder builder = new StringBuilder(path.getNameCount());
+        for(int i = 0; i < path.getNameCount(); ++i){
+            builder.append("___");
+        }
+        builder.append("|->");
+        builder.append(path.getFileName());
+        return builder.toString();
     }
 }
