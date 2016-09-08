@@ -3,6 +3,9 @@ jdk:
  # - openjdk7
  # - oraclejdk7
   - oraclejdk8
-script: mvn clean install -Dmaven.javadoc.skip=tr -B -V
+#script: mvn clean install -Dmaven.javadoc.skip=tr -B -V
+sudo: false # faster builds
+
+script: mvn cobertura:cobertura
 after_success:
   - bash <(curl -s https://codecov.io/bash) -t ab229967-0d35-45b6-bf8d-193c420cbce6
