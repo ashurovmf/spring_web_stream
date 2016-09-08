@@ -5,4 +5,4 @@ jdk:
   - oraclejdk8
 script: mvn clean install -Dmaven.javadoc.skip=tr -B -V
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash) -t ab229967-0d35-45b6-bf8d-193c420cbce6
