@@ -35,6 +35,8 @@ import static org.junit.Assert.assertTrue;
 public class FileSystemServiceTest {
 
     private static final Logger logger = Logger.getLogger(WebSocketControllerTest.class);
+    public static final String NAME_TEMP2 = "temp2";
+    public static final String DIR_TEMP2 = "." + File.separator + NAME_TEMP2;
 
     @Autowired
     WebApplicationContext wac;
@@ -43,7 +45,7 @@ public class FileSystemServiceTest {
 
     @Before
     public void setup() {
-        File parentDir = Paths.get("."+File.separator+"temp2").toFile();
+        File parentDir = Paths.get(DIR_TEMP2).toFile();
         boolean created = false;
         if(!parentDir.exists()){
             created = parentDir.mkdir();
@@ -78,7 +80,7 @@ public class FileSystemServiceTest {
 
     @After
     public void clean(){
-        Path parentDir = Paths.get("."+File.separator+"temp2");
+        Path parentDir = Paths.get(DIR_TEMP2);
         try {
             Files.walkFileTree(parentDir, new SimpleFileVisitor<Path>() {
                 @Override
@@ -108,10 +110,16 @@ public class FileSystemServiceTest {
             @Override
             public void call(FileStateMessage message) {
                 assertTrue("Message from File system service", !message.getFileName().isEmpty());
-                assertEquals("second_level",message.getFileName());
             }
         });
+        fileSystemService.getFileHierarchyBasedOnPath(Paths.get(DIR_TEMP2));
     }
 
-
+    @Test
+    public void tryToCreateMesage() throws Exception {
+        FileSystemService fileSystemService = (FileSystemService) wac.getBean(FileSystemService.class);
+        FileStateMessage message = fileSystemService.createFileStateMessage(Paths.get(DIR_TEMP2).toFile());
+        assertTrue("Message from File is created", !message.getFileName().isEmpty());
+        assertEquals(NAME_TEMP2,message.getFileName());
+    }
 }

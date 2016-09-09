@@ -68,18 +68,14 @@ public class WebSocketController {
 //            }
 //        }
 //    }
-
-
-
-    public String[] listFilesViaStream(String directoryName) throws IOException {
-        logger.debug("Try to get stream from " + directoryName);
-        String searchPath = "c:/";
-        Path rootPath = Paths.get(searchPath + directoryName);
-        String[] paths = Files.walk(rootPath)
-                .map(TreeFileSystemNodeRepresenter::representPathToString)
-                .toArray(size -> new String[size]);
-        String[] result = paths;
-        return result;
-    }
-
+//    public String[] listFilesViaStream(String directoryName) throws IOException {
+//        logger.debug("Try to get stream from " + directoryName);
+//        String searchPath = "c:/";
+//        Path rootPath = Paths.get(searchPath + directoryName);
+//        String[] paths = Files.walk(rootPath)
+//                .map(TreeFileSystemNodeRepresenter::representPathToString)
+//                .toArray(size -> new String[size]);
+//        String[] result = paths;
+//        return result;
+//    }
 }

@@ -30,33 +30,36 @@ public class FileSystemService {
     public FileSystemService(){
         try {
             watchService = FileSystems.getDefault().newWatchService();
-            Executors.newSingleThreadExecutor().execute(() -> {
-                while (true){
-                    WatchKey watchKey;
-                    try {
-                        watchKey = watchService.take();
-                        for (WatchEvent event : watchKey.pollEvents()){
-                            final WatchEvent.Kind kind = event.kind();
-                            final Path changed = (Path) event.context();
-                            FileStateMessage message = createFileStateMessage(changed.toFile());
-                            if (kind == StandardWatchEventKinds.ENTRY_CREATE){
-                                message.setState(FileStateMessage.STATE_ADDED);
+            Executors.newSingleThreadExecutor().execute(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        WatchKey watchKey;
+                        try {
+                            watchKey = watchService.take();
+                            for (WatchEvent event : watchKey.pollEvents()) {
+                                final WatchEvent.Kind kind = event.kind();
+                                final Path changed = (Path) event.context();
+                                FileStateMessage message = FileSystemService.this.createFileStateMessage(changed.toFile());
+                                if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
+                                    message.setState(FileStateMessage.STATE_ADDED);
+                                }
+                                if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+                                    message.setState(FileStateMessage.STATE_MODIFIED);
+                                }
+                                if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
+                                    message.setState(FileStateMessage.STATE_DELETED);
+                                }
+                                watchStream.onNext(message);
                             }
-                            if (kind == StandardWatchEventKinds.ENTRY_MODIFY){
-                                message.setState(FileStateMessage.STATE_MODIFIED);
+                            boolean valid = watchKey.reset();
+                            if (!valid) {
+                                logger.error("Watch key has been unregistered");
                             }
-                            if (kind == StandardWatchEventKinds.ENTRY_DELETE){
-                                message.setState(FileStateMessage.STATE_DELETED);
-                            }
-                            watchStream.onNext(message);
+                        } catch (InterruptedException e) {
+                            logger.error(e);
+                            return;
                         }
-                        boolean valid = watchKey.reset();
-                        if(!valid){
-                            logger.error("Watch key has been unregistered");
-                        }
-                    } catch (InterruptedException e) {
-                        logger.error(e);
-                        return;
                     }
                 }
             });
@@ -70,7 +73,7 @@ public class FileSystemService {
     }
 
     public Observable<FileStateMessage> getFileHierarchyBasedOnPath(Path basePath){
-        FileHierarchyIterator iterator = new FileHierarchyIterator(basePath);
+        FileHierarchyIterator iterator = new FileHierarchyIterator(basePath, watchService);
         while (iterator.hasNext()){
             File file = iterator.next();
             FileStateMessage message = createFileStateMessage(file);
@@ -93,11 +96,13 @@ public class FileSystemService {
 
     class FileHierarchyIterator implements Iterator<File>{
 
+        private WatchService service;
         private Path basePath;
         private Stack<File> fileStack = new Stack<>();
         private HashSet<WatchKey> regKeySet = new HashSet<>();
 
-        public FileHierarchyIterator(Path rootPath) throws InvalidPathException {
+        public FileHierarchyIterator(Path rootPath, WatchService watchService) throws InvalidPathException {
+            service = watchService;
             basePath = rootPath;
             File currentDir = basePath.toFile();
             registerWatcherForPath(rootPath);
@@ -114,7 +119,7 @@ public class FileSystemService {
 
         public void registerWatcherForPath(Path path) {
             try {
-                WatchKey keyReg = path.register(watchService,
+                WatchKey keyReg = path.register(service,
                         StandardWatchEventKinds.ENTRY_CREATE,
                         StandardWatchEventKinds.ENTRY_MODIFY,
                         StandardWatchEventKinds.ENTRY_DELETE);
