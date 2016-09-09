@@ -4,6 +4,9 @@ import com.gft.backend.entities.TreeFileSystemNode;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -32,5 +35,13 @@ public class TreeFileSystemNodeRepresenterTest {
         assertEquals(4,result.length);
         assertTrue("For root node","_________|->[Root]".equals(result[0]));
         assertTrue("For first child node","____________|->Child0".equals(result[1]));
+    }
+
+    @Test
+    public void convertPathToString() throws Exception {
+        Path testPath = Paths.get(".");
+        String result = TreeFileSystemNodeRepresenter.representPathToString(testPath);
+        assertTrue("String not empty",!result.isEmpty());
+        assertTrue("String contains file name",result.contains(testPath.getFileName().toString()));
     }
 }

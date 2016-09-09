@@ -2,8 +2,7 @@ package com.gft.backend.controllers;
 
 import com.gft.backend.configs.SpringWebConfig;
 import com.gft.backend.entities.FolderList;
-import com.gft.backend.entities.FolderNameSearch;
-import com.gft.backend.entities.TreeFileSystemNode;
+import com.gft.backend.entities.FolderNameSearchTest;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
@@ -69,17 +68,17 @@ public class WebSocketControllerTest {
 
         public StompSession session;
 
-        public CompletableFuture<FolderNameSearch> singleResponse = new CompletableFuture<>();
+        public CompletableFuture<FolderNameSearchTest> singleResponse = new CompletableFuture<>();
 
         @Override
         public Type getPayloadType(StompHeaders headers) {
-            return FolderNameSearch.class;
+            return FolderNameSearchTest.class;
         }
 
         @Override
         public void handleFrame(StompHeaders headers, Object payload) {
             System.out.println("Get folder name with content" + payload.toString());
-            singleResponse.complete((FolderNameSearch) payload);
+            singleResponse.complete((FolderNameSearchTest) payload);
         }
 
         @Override
@@ -268,13 +267,13 @@ public class WebSocketControllerTest {
             stompSession.subscribe("/topic/show", listHandler);
             System.out.println("Subscribed");
 
-            FolderNameSearch message = new FolderNameSearch();
-            message.setFolderName(C_TEMP1);
+            FolderNameSearchTest message = new FolderNameSearchTest();
+            //message.setFolderName(C_TEMP1);
             folderHandler.session.send("/list/add", message);
 
             String[] fList = listHandler.singleResponse.get().getfList();
 
-            message.setFolderName("#");
+            //message.setFolderName("#");
             folderHandler.session.send("/list/add", message);
 
             stompClient.stop();

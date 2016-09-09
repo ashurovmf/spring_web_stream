@@ -13,7 +13,8 @@ public class TreeFileSystemNodeTest {
     //@Ignore
     @Test
     public void creatingNode() throws Exception {
-        TreeFileSystemNode<String> node = new TreeFileSystemNode<String>("Root");
+        TreeFileSystemNode<String> node = new TreeFileSystemNode<String>();
+        node.setData("Root");
         node.setDirectory(true);
         node.setLevel(3);
 
