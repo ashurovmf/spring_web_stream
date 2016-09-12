@@ -1,7 +1,9 @@
 package com.gft.backend.controllers;
 
 import com.gft.backend.configs.SpringWebConfig;
+import com.gft.backend.entities.FileStateMessage;
 import com.gft.backend.entities.FolderList;
+import com.gft.backend.entities.FolderNameSearch;
 import com.gft.backend.entities.FolderNameSearchTest;
 import org.apache.log4j.Logger;
 import org.junit.After;
@@ -102,17 +104,17 @@ public class WebSocketControllerTest {
 
         public StompSession session;
 
-        public CompletableFuture<FolderList> singleResponse = new CompletableFuture<>();
+        public CompletableFuture<FileStateMessage> singleResponse = new CompletableFuture<>();
 
         @Override
         public Type getPayloadType(StompHeaders headers) {
-            return FolderList.class;
+            return FileStateMessage.class;
         }
 
         @Override
         public void handleFrame(StompHeaders headers, Object payload) {
             System.out.println("Get folder list with content" + payload.toString());
-            singleResponse.complete((FolderList) payload);
+            singleResponse.complete((FileStateMessage) payload);
         }
 
         @Override
@@ -228,7 +230,6 @@ public class WebSocketControllerTest {
         }
     }
 
-    @Ignore
     @Test
     public void sendMessageToBrokerAndReceiveReplyViaTopic() throws Exception {
         System.out.println("Stomp client is trying to connect ");
@@ -267,22 +268,18 @@ public class WebSocketControllerTest {
             stompSession.subscribe("/topic/show", listHandler);
             System.out.println("Subscribed");
 
-            FolderNameSearchTest message = new FolderNameSearchTest();
-            //message.setFolderName(C_TEMP1);
+            FolderNameSearch message = new FolderNameSearch();
+            message.setFolderName(C_TEMP1);
             folderHandler.session.send("/list/add", message);
 
-            String[] fList = listHandler.singleResponse.get().getfList();
+            String fName = listHandler.singleResponse.get().getFileName();
 
-            //message.setFolderName("#");
+            message.setFolderName("#");
             folderHandler.session.send("/list/add", message);
 
             stompClient.stop();
-            assertEquals(5,fList.length);
-            assertTrue("Root directory", "___|->temp1".equals(fList[0]));
-            assertTrue("First file is 1.txt", "______|->1.txt".equals(fList[1]));
-            assertTrue("Second file is second.txt", "______|->second.txt".equals(fList[2]));
-            assertTrue("Subdirectory is", "______|->second_level".equals(fList[3]));
-            assertTrue("The file contained in subdirectory", "_________|->photo.bmp".equals(fList[4]));
+            assertEquals("",fName);
+            assertTrue("Root directory", "".equals(fName));
         }
         catch (Exception ex)
         {

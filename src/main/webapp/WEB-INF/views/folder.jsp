@@ -93,8 +93,16 @@
         function sendName() {
             var name = document.getElementById('name').value;
             stompClient.send("/list/add", {}, JSON.stringify({ 'folderName': name}));
-            var rootObj = document.getElementById('rootDir');
-            rootObj.appendChild(document.createTextNode(name));
+            var rootDir = document.getElementById('dirList');
+            clearResult(rootDir);
+            var rootDir = document.getElementById('rootDir');
+            clearResult(rootDir);
+            rootDir.appendChild(document.createTextNode(name));
+        }
+        function clearResult(rootDiv){
+            while (rootDiv.firstChild) {
+                rootDiv.removeChild(rootDiv.firstChild);
+            }
         }
         function showResult(message) {
             if ("ADD" === message.state){

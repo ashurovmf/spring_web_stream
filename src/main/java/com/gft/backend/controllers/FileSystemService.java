@@ -9,9 +9,7 @@ import rx.subjects.PublishSubject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
@@ -27,6 +25,8 @@ public class FileSystemService {
 
     private volatile PublishSubject<FileStateMessage> watchStream = PublishSubject.create();
 
+    private volatile List<FileHierarchyIterator> iteratorCache = new LinkedList<>();
+
     public FileSystemService(){
         try {
             watchService = FileSystems.getDefault().newWatchService();
@@ -36,11 +36,14 @@ public class FileSystemService {
                     while (true) {
                         WatchKey watchKey;
                         try {
+                            logger.info("Watch key try to be taken");
                             watchKey = watchService.take();
                             for (WatchEvent event : watchKey.pollEvents()) {
-                                final WatchEvent.Kind kind = event.kind();
-                                final Path changed = (Path) event.context();
-                                FileStateMessage message = FileSystemService.this.createFileStateMessage(changed.toFile());
+                                logger.debug("Parse watch event " + event.count());
+                                WatchEvent.Kind kind = event.kind();
+                                Path changed = (Path) event.context();
+                                logger.debug("Get watch event " + kind.name() + " for " + changed.toString());
+                                FileStateMessage message = createFileStateMessage(changed.toFile());
                                 if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
                                     message.setState(FileStateMessage.STATE_ADDED);
                                 }
@@ -50,21 +53,23 @@ public class FileSystemService {
                                 if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
                                     message.setState(FileStateMessage.STATE_DELETED);
                                 }
+                                logger.debug("Message is prepared before sent:" + message.getFileName());
                                 watchStream.onNext(message);
                             }
+                            logger.debug("Try to reset key");
                             boolean valid = watchKey.reset();
                             if (!valid) {
                                 logger.error("Watch key has been unregistered");
                             }
                         } catch (InterruptedException e) {
-                            logger.error(e);
+                            logger.error("Watch loop is interrupted",e);
                             return;
                         }
                     }
                 }
             });
         } catch (IOException e) {
-            logger.error(e);
+            logger.error("FileSystemService creation is failed",e);
         }
     }
 
@@ -73,6 +78,7 @@ public class FileSystemService {
     }
 
     public Observable<FileStateMessage> getFileHierarchyBasedOnPath(Path basePath){
+        CleanContent();
         FileHierarchyIterator iterator = new FileHierarchyIterator(basePath, watchService);
         while (iterator.hasNext()){
             File file = iterator.next();
@@ -83,14 +89,26 @@ public class FileSystemService {
         return watchStream;
     }
 
-    public FileStateMessage createFileStateMessage(File file) {
+    private void CleanContent(){
+        for(FileHierarchyIterator iter:iteratorCache){
+            iter.close();
+        }
+    }
+
+    public static FileStateMessage createFileStateMessage(File file) {
+        logger.debug("Try to create message for " + file.toString());
         FileStateMessage message = new FileStateMessage();
         message.setFileName(file.getName());
-        logger.debug("### File sep:"+File.separator+" len:"+File.separator.length());
-        message.setParent(file.getParent().split(Pattern.quote(File.separator)));
+        String parentPathStr = file.getParent();
+        logger.debug("Parent path " + parentPathStr);
+        if(parentPathStr == null){
+            parentPathStr = ".";
+        }
+        message.setParent(parentPathStr.split(Pattern.quote(File.separator)));
+//        message.setHashId(FileStateMessage.getMD5Hash(lastParent+message.getFileName()));
         if(file.isDirectory()) message.setDirectory(true);
-        message.setHashId(FileStateMessage.getMD5Hash(
-                message.getParent()+message.getFileName()));
+        message.setHashId(Integer.toHexString(file.hashCode()));
+        logger.debug("Message is prepared " + message.getFileName());
         return message;
     }
 
@@ -124,8 +142,9 @@ public class FileSystemService {
                         StandardWatchEventKinds.ENTRY_MODIFY,
                         StandardWatchEventKinds.ENTRY_DELETE);
                 regKeySet.add(keyReg);
+                logger.debug("New key reg is " + keyReg.isValid());
             } catch (IOException e) {
-                logger.error(e);
+                logger.error("Fail with path register", e);
             }
         }
 
@@ -142,6 +161,12 @@ public class FileSystemService {
                 registerWatcherForPath(nextFile.toPath());
             }
             return nextFile;
+        }
+
+        public void close(){
+            for(WatchKey key : regKeySet){
+                key.cancel();
+            }
         }
     }
 }

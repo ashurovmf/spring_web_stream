@@ -3,6 +3,7 @@ package com.gft.backend.controllers;
 import com.gft.backend.configs.SpringWebConfig;
 import com.gft.backend.entities.FileStateMessage;
 import org.apache.log4j.Logger;
+import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,8 +42,6 @@ public class FileSystemServiceTest {
     @Autowired
     WebApplicationContext wac;
 
-    private MockMvc mockMvc;
-
     @Before
     public void setup() {
         File parentDir = Paths.get(DIR_TEMP2).toFile();
@@ -74,28 +73,13 @@ public class FileSystemServiceTest {
                 System.out.println("Creating failed:" + e.getMessage());
             }
         }
-
-        this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
     }
 
     @After
     public void clean(){
         Path parentDir = Paths.get(DIR_TEMP2);
         try {
-            Files.walkFileTree(parentDir, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    Files.delete(dir);
-                    return FileVisitResult.CONTINUE;
-                }
-
-            });
+            FileUtils.deleteDirectory(parentDir.toFile());
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("Deleting failed:" + e.getMessage());

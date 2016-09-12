@@ -2,17 +2,15 @@ package com.gft.backend.controllers;
 
 import com.gft.backend.entities.FileStateMessage;
 import com.gft.backend.entities.FolderNameSearch;
-import com.gft.backend.utils.TreeFileSystemNodeRepresenter;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Controller;
+import rx.Subscription;
 import rx.functions.Action1;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -27,6 +25,8 @@ public class WebSocketController {
 
     private volatile String folderName = null;
 
+    private volatile Subscription subscribe;
+
     @Autowired
     private FileSystemService fileService;
 
@@ -38,13 +38,15 @@ public class WebSocketController {
         logger.debug("$Receive message with content:" + folderNameSearch.getFolderName());
         if("#".equals(folderNameSearch.getFolderName())) {
             folderName = null;
+            subscribe.unsubscribe();
         } else {
             folderName = new String(folderNameSearch.getFolderName());
-            fileService.getFolderWatcherStream().subscribe(new Action1<FileStateMessage>() {
+            subscribe = fileService.getFolderWatcherStream().subscribe(new Action1<FileStateMessage>() {
                 @Override
                 public void call(FileStateMessage message) {
+                    logger.debug("$Try to send " + message.getFileName() + " with st:" + message.getState());
                     simpMessagingTemplate.convertAndSend("/topic/show", message);
-                    logger.debug("$Send content of " + message.getFileName());
+                    logger.debug("$Send content of " + message.getFileName() + " with id" + message.getHashId());
                 }
             });
             Path rootPath = Paths.get("c:/" + folderName);
