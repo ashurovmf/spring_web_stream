@@ -288,6 +288,17 @@ public class WebSocketControllerTest {
         assertTrue("STOMP TEST", true);
     }
 
+    @Test
+    public void toGetService() throws Exception {
+        WebSocketController controller = wac.getBean(WebSocketController.class);
+        FolderNameSearch folder = new FolderNameSearch();
+        folder.setFolderName(C_TEMP1);
+        controller.fetchFolder(folder);
+        folder.setFolderName("#");
+        controller.fetchFolder(folder);
+        assertTrue("Web Socket Controller TEST", true);
+    }
+
 
     //@Ignore
     @Test
