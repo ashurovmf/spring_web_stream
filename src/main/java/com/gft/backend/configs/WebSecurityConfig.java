@@ -1,12 +1,16 @@
 package com.gft.backend.configs;
 
+import com.hazelcast.config.Config;
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.HazelcastInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.servlet.configuration.EnableWebMvcSecurity;
+import org.springframework.session.hazelcast.config.annotation.web.http.EnableHazelcastHttpSession;
 
 import javax.sql.DataSource;
 
@@ -15,10 +19,8 @@ import javax.sql.DataSource;
  */
 @Configuration
 @EnableWebMvcSecurity
+@EnableHazelcastHttpSession
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
-
-//    @Autowired
-//    public DbUsersDetailsService usersDetailsService;
 
     @Autowired
     DataSource dataSource;
@@ -34,13 +36,11 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                         "select username, role from userroles_v where username=?");
     }
 
-//    @Autowired
-//    public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
-//        auth.userDetailsService(usersDetailsService);
-////        auth.inMemoryAuthentication().withUser("miav").password("123456").roles("USER");
-////        auth.inMemoryAuthentication().withUser("admin").password("123456").roles("ADMIN");
-////        auth.inMemoryAuthentication().withUser("dba").password("123456").roles("DBA");
-//    }
+    @Bean
+    public HazelcastInstance embeddedHazelcast() {
+        Config hazelcastConfig = new Config();
+        return Hazelcast.newHazelcastInstance(hazelcastConfig);
+    }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -53,11 +53,6 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .and().formLogin().loginPage("/login")
                 .usernameParameter("username").passwordParameter("password")
                 .and().exceptionHandling().accessDeniedPage("/403");
-
-//        http.authorizeRequests()
-//                .antMatchers("/admin/**").access("hasRole('ROLE_ADMIN')")
-//                .antMatchers("/dba/**").access("hasRole('ROLE_ADMIN') or hasRole('ROLE_DBA')")
-//                .and().formLogin();
     }
 
 

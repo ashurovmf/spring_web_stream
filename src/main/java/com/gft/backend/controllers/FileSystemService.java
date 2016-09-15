@@ -1,10 +1,12 @@
 package com.gft.backend.controllers;
 
 import com.gft.backend.entities.FileStateMessage;
+import com.gft.backend.utils.WatchServiceBean;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import rx.Observable;
-import rx.subjects.PublishSubject;
+import rx.subjects.ReplaySubject;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,78 +23,65 @@ public class FileSystemService {
 
     private static final Logger logger = Logger.getLogger(FileSystemService.class);
 
-    private volatile WatchService watchService = null;
-
-    private volatile PublishSubject<FileStateMessage> watchStream = PublishSubject.create();
-
-    private volatile List<FileHierarchyIterator> iteratorCache = new LinkedList<>();
+    @Autowired
+    private WatchServiceBean watchService;
 
     public FileSystemService(){
-        try {
-            watchService = FileSystems.getDefault().newWatchService();
-            Executors.newSingleThreadExecutor().execute(new Runnable() {
-                @Override
-                public void run() {
-                    while (true) {
-                        WatchKey watchKey;
-                        try {
-                            logger.info("Watch key try to be taken");
-                            watchKey = watchService.take();
-                            for (WatchEvent event : watchKey.pollEvents()) {
-                                logger.debug("Parse watch event " + event.count());
-                                WatchEvent.Kind kind = event.kind();
-                                Path changed = (Path) event.context();
-                                logger.debug("Get watch event " + kind.name() + " for " + changed.toString());
-                                FileStateMessage message = createFileStateMessage(changed.toFile());
-                                if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
-                                    message.setState(FileStateMessage.STATE_ADDED);
-                                }
-                                if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
-                                    message.setState(FileStateMessage.STATE_MODIFIED);
-                                }
-                                if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
-                                    message.setState(FileStateMessage.STATE_DELETED);
-                                }
-                                logger.debug("Message is prepared before sent:" + message.getFileName());
-                                watchStream.onNext(message);
-                            }
-                            logger.debug("Try to reset key");
-                            boolean valid = watchKey.reset();
-                            if (!valid) {
-                                logger.error("Watch key has been unregistered");
-                            }
-                        } catch (InterruptedException e) {
-                            logger.error("Watch loop is interrupted",e);
-                            return;
-                        }
-                    }
-                }
-            });
-        } catch (IOException e) {
-            logger.error("FileSystemService creation is failed",e);
-        }
-    }
 
-    public Observable<FileStateMessage> getFolderWatcherStream() {
-        return watchStream;
     }
 
     public Observable<FileStateMessage> getFileHierarchyBasedOnPath(Path basePath){
-        CleanContent();
-        FileHierarchyIterator iterator = new FileHierarchyIterator(basePath, watchService);
+        ReplaySubject<FileStateMessage> watchStream = ReplaySubject.create();
+        logger.debug("Try to create iterator for files");
+        FileHierarchyIterator iterator = new FileHierarchyIterator(basePath, watchService.getWatchService());
+        Executors.newSingleThreadExecutor().execute(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    WatchKey watchKey;
+                    try {
+                        logger.info("Watch key try to be taken");
+                        watchKey = watchService.getWatchService().take();
+                        for (WatchEvent event : watchKey.pollEvents()) {
+                            logger.debug("Parse watch event " + event.count());
+                            WatchEvent.Kind kind = event.kind();
+                            Path changed = (Path) event.context();
+                            Path root = ((Path) event.context()).getRoot();
+                            logger.debug("Get watch event " + kind.name() + " for " + root);
+                            FileStateMessage message = createFileStateMessage(changed.toFile());
+                            if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
+                                message.setState(FileStateMessage.STATE_ADDED);
+                            }
+                            if (kind == StandardWatchEventKinds.ENTRY_MODIFY) {
+                                message.setState(FileStateMessage.STATE_MODIFIED);
+                            }
+                            if (kind == StandardWatchEventKinds.ENTRY_DELETE) {
+                                message.setState(FileStateMessage.STATE_DELETED);
+                            }
+                            logger.debug("Message is prepared before sent:" + message.getFileName());
+                            watchStream.onNext(message);
+                        }
+                        logger.debug("Try to reset key");
+                        boolean valid = watchKey.reset();
+                        if (!valid) {
+                            logger.error("Watch key has been unregistered");
+                        }
+                    } catch (Exception e) {
+                        logger.error("Watch loop is interrupted",e);
+                        return;
+                    }
+                }
+            }
+        });
+        logger.debug("Organize a loop for scan");
         while (iterator.hasNext()){
             File file = iterator.next();
             FileStateMessage message = createFileStateMessage(file);
             message.setState(FileStateMessage.STATE_ADDED);
             watchStream.onNext(message);
+            logger.debug("Message " + message.getFileName()+ " from iterator is sent");
         }
         return watchStream;
-    }
-
-    private void CleanContent(){
-        for(FileHierarchyIterator iter:iteratorCache){
-            iter.close();
-        }
     }
 
     public static FileStateMessage createFileStateMessage(File file) {

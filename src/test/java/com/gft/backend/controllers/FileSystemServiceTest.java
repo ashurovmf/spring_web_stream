@@ -89,14 +89,12 @@ public class FileSystemServiceTest {
     @Test
     public void tryToInit() throws Exception {
         FileSystemService fileSystemService = (FileSystemService) wac.getBean(FileSystemService.class);
-        Observable<FileStateMessage> watcherStream = fileSystemService.getFolderWatcherStream();
-        watcherStream.subscribe(new Action1<FileStateMessage>() {
+        fileSystemService.getFileHierarchyBasedOnPath(Paths.get(DIR_TEMP2)).subscribe(new Action1<FileStateMessage>() {
             @Override
             public void call(FileStateMessage message) {
                 assertTrue("Message from File system service", !message.getFileName().isEmpty());
             }
         });
-        fileSystemService.getFileHierarchyBasedOnPath(Paths.get(DIR_TEMP2));
     }
 
     @Test

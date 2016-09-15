@@ -4,28 +4,30 @@ import com.gft.backend.entities.FileStateMessage;
 import com.gft.backend.entities.FolderNameSearch;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import rx.Subscription;
 import rx.functions.Action1;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.Principal;
 
 /**
  * Created by miav on 2016-08-29.
  */
 @Controller
-@EnableScheduling
 public class WebSocketController {
 
     private static final Logger logger = Logger.getLogger(WebSocketController.class);
-
-    private volatile String folderName = null;
-
-    private volatile Subscription subscribe;
 
     @Autowired
     private FileSystemService fileService;
@@ -34,24 +36,51 @@ public class WebSocketController {
     private SimpMessagingTemplate simpMessagingTemplate;
 
     @MessageMapping("/add")
-    public void fetchFolder(FolderNameSearch folderNameSearch){
+    public void fetchFolder(Message<Object> inMessage, @Payload FolderNameSearch folderNameSearch){
         logger.debug("$Receive message with content:" + folderNameSearch.getFolderName());
+        final String authedSender = getSessionIdOrUser(inMessage);
         if("#".equals(folderNameSearch.getFolderName())) {
-            folderName = null;
-            subscribe.unsubscribe();
+            logger.debug("$Unsubscribed");
         } else {
-            folderName = new String(folderNameSearch.getFolderName());
-            subscribe = fileService.getFolderWatcherStream().subscribe(new Action1<FileStateMessage>() {
+            Path rootPath = Paths.get("c:/" + folderNameSearch.getFolderName());
+            logger.debug("$Try to get hierarchy for " + folderNameSearch.getFolderName());
+            Subscription subscribe = fileService.getFileHierarchyBasedOnPath(rootPath).subscribe(new Action1<FileStateMessage>() {
                 @Override
                 public void call(FileStateMessage message) {
                     logger.debug("$Try to send " + message.getFileName() + " with st:" + message.getState());
-                    simpMessagingTemplate.convertAndSend("/topic/show", message);
-                    logger.debug("$Send content of " + message.getFileName() + " with id" + message.getHashId());
+                    simpMessagingTemplate.convertAndSendToUser(authedSender, "/topic/show", message, createHeaders(authedSender));
+                    logger.debug("$Send content of " + message.getFileName() + " to session id " + authedSender);
                 }
             });
-            Path rootPath = Paths.get("c:/" + folderName);
-            fileService.getFileHierarchyBasedOnPath(rootPath);
+            logger.debug("$Subscribed for " + folderNameSearch.getFolderName());
         }
+    }
+
+    private String getSessionIdOrUser(Message<Object> inMessage) {
+        String result = "";
+        logger.debug("$Parse input message:" + inMessage.getHeaders());
+        String session_id = inMessage.getHeaders().get(SimpMessageHeaderAccessor.SESSION_ID_HEADER, String.class);
+        if(session_id != null) {
+            result = session_id;
+        }
+        Principal principal = inMessage.getHeaders().get(SimpMessageHeaderAccessor.USER_HEADER, Principal.class);
+        if(principal != null) {
+            result = principal.getName();
+        }
+        return result;
+    }
+
+    private MessageHeaders createHeaders(String sessionId) {
+        SimpMessageHeaderAccessor headerAccessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+        headerAccessor.setSessionId(sessionId);
+        headerAccessor.setLeaveMutable(true);
+        return headerAccessor.getMessageHeaders();
+    }
+
+    @MessageExceptionHandler
+    @SendToUser(destinations="/queue/errors", broadcast=false)
+    public String handleException(Exception ex) {
+        return ex.getMessage();
     }
 
 //    @Scheduled(fixedRate = 500)

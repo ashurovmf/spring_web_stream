@@ -14,7 +14,7 @@ public class CustomWebInitializer extends
 
     @Override
     protected Class<?>[] getServletConfigClasses() {
-        return new Class[] { SpringWebConfig.class };
+        return new Class[] { SpringWebConfig.class, AppWebSocketConfig.class };
     }
 
     @Override

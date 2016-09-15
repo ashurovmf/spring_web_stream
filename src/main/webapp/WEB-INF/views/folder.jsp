@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Calculator App Using Spring 4 WebSocket</title>
+    <title>Spring 4 WebSocket</title>
     <script src="js/sockjs-0.3.4.js"></script>
     <script src="js/stomp.js"></script>
     <style media="screen" type="text/css">
@@ -75,11 +75,15 @@
         function connect() {
             var socket = new SockJS('/webstream/add');
 			stompClient = Stomp.over(socket);
+			// Handle any errors that occur.
+            socket.onerror = function(error) {
+              console.log('WebSocket Error: ' + error);
+            };
             stompClient.connect({}, function(frame) {
                 setConnected(true);
                 console.log('Connected: ' + frame);
 
-                stompClient.subscribe('/topic/show', function(calResult){
+                stompClient.subscribe('/user/topic/show', function(calResult){
                     var p = JSON.parse(calResult.body);
                 	showResult(p);
                 });
@@ -124,9 +128,18 @@
                 }
             }
             if ("DEL" === message.state){
-                var response = document.getElementById('dirList');
-                var dirObj = document.getElementById(message.hashId);
-                response.removeChild(dirObj);
+                var rootDir = document.getElementById('dirList');
+                var fileObj = document.getElementById(message.hashId);
+                if("." === message.parent[message.parent.length-1]){
+                    rootDir = fileObj.parentElement;
+                }
+                else {
+                    var response = document.getElementById(message.parent[message.parent.length-1]+"_dir");
+                    if (response != null){
+                        rootDir = response;
+                    }
+                }
+                rootDir.removeChild(fileObj);
             }
 
             //for (var prp in message) {

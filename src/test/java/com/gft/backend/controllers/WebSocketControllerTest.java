@@ -12,13 +12,22 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandler;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.web.AnnotationConfigWebContextLoader;
@@ -46,6 +55,7 @@ import java.lang.reflect.Type;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -230,6 +240,7 @@ public class WebSocketControllerTest {
         }
     }
 
+    @Ignore
     @Test
     public void sendMessageToBrokerAndReceiveReplyViaTopic() throws Exception {
         System.out.println("Stomp client is trying to connect ");
@@ -288,14 +299,15 @@ public class WebSocketControllerTest {
         assertTrue("STOMP TEST", true);
     }
 
+    @Ignore
     @Test
     public void toGetService() throws Exception {
         WebSocketController controller = wac.getBean(WebSocketController.class);
         FolderNameSearch folder = new FolderNameSearch();
         folder.setFolderName(C_TEMP1);
-        controller.fetchFolder(folder);
+        controller.fetchFolder(null, folder);
         folder.setFolderName("#");
-        controller.fetchFolder(folder);
+        controller.fetchFolder(null, folder);
         assertTrue("Web Socket Controller TEST", true);
     }
 
@@ -303,7 +315,7 @@ public class WebSocketControllerTest {
     //@Ignore
     @Test
     @WithMockUser
-    public void toShowFolderPage() throws Exception {
+    public void toRedirectFromFolderPage() throws Exception {
         mockMvc.perform(get("/folder"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("folder"));
