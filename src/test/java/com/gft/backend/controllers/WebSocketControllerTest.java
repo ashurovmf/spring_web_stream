@@ -14,8 +14,11 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -54,9 +57,7 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
@@ -240,7 +241,7 @@ public class WebSocketControllerTest {
         }
     }
 
-    @Ignore
+
     @Test
     public void sendMessageToBrokerAndReceiveReplyViaTopic() throws Exception {
         System.out.println("Stomp client is trying to connect ");
@@ -299,15 +300,28 @@ public class WebSocketControllerTest {
         assertTrue("STOMP TEST", true);
     }
 
-    @Ignore
+
     @Test
     public void toGetService() throws Exception {
         WebSocketController controller = wac.getBean(WebSocketController.class);
         FolderNameSearch folder = new FolderNameSearch();
         folder.setFolderName(C_TEMP1);
-        controller.fetchFolder(null, folder);
-        folder.setFolderName("#");
-        controller.fetchFolder(null, folder);
+        Message<Object> messageMap = new Message<Object>() {
+            @Override
+            public Object getPayload() {
+                return folder;
+            }
+
+            @Override
+            public MessageHeaders getHeaders() {
+                Map<String,Object> headerMap = new HashMap<String,Object>();
+                headerMap.put("simpMessageType", SimpMessageType.MESSAGE);
+                headerMap.put(SimpMessageHeaderAccessor.SESSION_ID_HEADER,"4rnnhl4o");
+                MessageHeaders headers = new MessageHeaders(headerMap);
+                return headers;
+            }
+        };
+        controller.fetchFolder(messageMap, folder);
         assertTrue("Web Socket Controller TEST", true);
     }
 
