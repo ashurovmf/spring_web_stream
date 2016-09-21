@@ -1,0 +1,5 @@
+docker build --rm=true --tag test_web:1
+#includes postgres, extends the image with java opts and volume link
+docker run -it --name test_tomcat --rm --link test_postgres:postgres -p 8888:8080 -e JAVA_OPTS='-Xmx1g' -v ~/Documents/Docker/siudek/:/data test_web:1
+#test connect
+curl http://192.168.99.100:8888/webstream/folder

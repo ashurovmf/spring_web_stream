@@ -79,7 +79,7 @@ public class FileSystemService {
             FileStateMessage message = createFileStateMessage(file);
             message.setState(FileStateMessage.STATE_ADDED);
             watchStream.onNext(message);
-            logger.debug("Message " + message.getFileName()+ " from iterator is sent");
+            logger.debug("Message " + message.getFileName()+ " from iterator is prepared");
         }
         return watchStream;
     }
@@ -117,21 +117,24 @@ public class FileSystemService {
                 throw new InvalidPathException(rootPath.toString(), "Root path is not a directory");
             }
             addToStack(currentDir);
+            logger.debug("File iterator is created");
         }
 
         private void addToStack(File dir) {
             File[] listFiles = dir.listFiles();
             for (File cFile : listFiles)  fileStack.push(cFile);
+            logger.debug("Files are added to a stack");
         }
 
         public void registerWatcherForPath(Path path) {
             try {
+                logger.debug("Try to register watch key for " + path);
                 WatchKey keyReg = path.register(service,
                         StandardWatchEventKinds.ENTRY_CREATE,
                         StandardWatchEventKinds.ENTRY_MODIFY,
                         StandardWatchEventKinds.ENTRY_DELETE);
                 regKeySet.add(keyReg);
-                logger.debug("New key reg is " + keyReg.isValid());
+                logger.debug("New key reg for" + path + " is " + keyReg.isValid());
             } catch (IOException e) {
                 logger.error("Fail with path register", e);
             }

@@ -75,17 +75,6 @@ public class FileSystemServiceTest {
         }
     }
 
-    @After
-    public void clean(){
-        Path parentDir = Paths.get(DIR_TEMP2);
-        try {
-            FileUtils.deleteDirectory(parentDir.toFile());
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Deleting failed:" + e.getMessage());
-        }
-    }
-
     @Test
     public void tryToInit() throws Exception {
         FileSystemService fileSystemService = (FileSystemService) wac.getBean(FileSystemService.class);
@@ -103,5 +92,17 @@ public class FileSystemServiceTest {
         FileStateMessage message = fileSystemService.createFileStateMessage(Paths.get(DIR_TEMP2).toFile());
         assertTrue("Message from File is created", !message.getFileName().isEmpty());
         assertEquals(NAME_TEMP2,message.getFileName());
+    }
+
+    @After
+    public void clean(){
+        try {
+            File parentDir = Paths.get(DIR_TEMP2).toFile();
+            FileUtils.cleanDirectory(parentDir);
+            parentDir.delete();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Deleting failed at clean:" + e.getMessage());
+        }
     }
 }

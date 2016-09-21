@@ -6,6 +6,7 @@ import com.gft.backend.entities.FolderList;
 import com.gft.backend.entities.FolderNameSearch;
 import com.gft.backend.entities.FolderNameSearchTest;
 import org.apache.log4j.Logger;
+import org.apache.tomcat.util.http.fileupload.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -217,30 +218,6 @@ public class WebSocketControllerTest {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
     }
 
-    @After
-    public void clean(){
-        Path parentDir = Paths.get(C_TEMP1_PATH);
-        try {
-            Files.walkFileTree(parentDir, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    Files.delete(dir);
-                    return FileVisitResult.CONTINUE;
-                }
-
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Deleting failed:" + e.getMessage());
-        }
-    }
-
 
     @Test
     public void sendMessageToBrokerAndReceiveReplyViaTopic() throws Exception {
@@ -333,5 +310,36 @@ public class WebSocketControllerTest {
         mockMvc.perform(get("/folder"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("folder"));
+    }
+
+    @After
+    public void clean(){
+        try {
+            File parentDir = Paths.get(C_TEMP1_PATH).toFile();
+            FileUtils.cleanDirectory(parentDir);
+            parentDir.delete();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Deleting failed:" + e.getMessage());
+        }
+//        try {
+//            Files.walkFileTree(parentDir, new SimpleFileVisitor<Path>() {
+//                @Override
+//                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+//                    Files.delete(file);
+//                    return FileVisitResult.CONTINUE;
+//                }
+//
+//                @Override
+//                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+//                    Files.delete(dir);
+//                    return FileVisitResult.CONTINUE;
+//                }
+//
+//            });
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            System.out.println("Deleting failed:" + e.getMessage());
+//        }
     }
 }

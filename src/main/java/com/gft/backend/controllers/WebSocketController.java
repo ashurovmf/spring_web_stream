@@ -17,9 +17,13 @@ import org.springframework.stereotype.Controller;
 import rx.Subscription;
 import rx.functions.Action1;
 
+import java.io.File;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Principal;
+import java.util.Iterator;
 
 /**
  * Created by miav on 2016-08-29.
@@ -39,21 +43,29 @@ public class WebSocketController {
     public void fetchFolder(Message<Object> inMessage, @Payload FolderNameSearch folderNameSearch){
         logger.debug("$Receive message with content:" + folderNameSearch.getFolderName());
         final String authedSender = getSessionIdOrUser(inMessage);
-        if("#".equals(folderNameSearch.getFolderName())) {
-            logger.debug("$Unsubscribed");
-        } else {
-            Path rootPath = Paths.get("c:/" + folderNameSearch.getFolderName());
-            logger.debug("$Try to get hierarchy for " + folderNameSearch.getFolderName());
-            Subscription subscribe = fileService.getFileHierarchyBasedOnPath(rootPath).subscribe(new Action1<FileStateMessage>() {
-                @Override
-                public void call(FileStateMessage message) {
-                    logger.debug("$Try to send " + message.getFileName() + " with st:" + message.getState());
-                    simpMessagingTemplate.convertAndSendToUser(authedSender, "/topic/show", message, createHeaders(authedSender));
-                    logger.debug("$Send content of " + message.getFileName() + " to session id " + authedSender);
-                }
-            });
-            logger.debug("$Subscribed for " + folderNameSearch.getFolderName());
+        Path targetPath = getTargetPath(folderNameSearch);
+        logger.debug("$Try to get hierarchy for " + folderNameSearch.getFolderName());
+        Subscription subscribe = fileService.getFileHierarchyBasedOnPath(targetPath).subscribe(new Action1<FileStateMessage>() {
+            @Override
+            public void call(FileStateMessage message) {
+                logger.debug("$Try to send " + message.getFileName() + " with st:" + message.getState());
+                simpMessagingTemplate.convertAndSendToUser(authedSender, "/topic/show", message, createHeaders(authedSender));
+                logger.debug("$Send content of " + message.getFileName() + " to session id " + authedSender);
+            }
+        });
+        logger.debug("$Subscribed for " + folderNameSearch.getFolderName());
+    }
+
+    private Path getTargetPath(FolderNameSearch folderNameSearch) {
+        Path rootPath;
+        Iterator<Path> rootDirectories = FileSystems.getDefault().getRootDirectories().iterator();
+        if(rootDirectories.hasNext()) { rootPath = rootDirectories.next(); } else { rootPath = Paths.get("c:/"); }
+        Path targetPath = Paths.get(rootPath + folderNameSearch.getFolderName());
+        File targetFile = targetPath.toFile();
+        if(!targetFile.exists() || !targetFile.isDirectory()){
+            targetPath = rootPath; //targetPath = rootPath; //Paths.get("/data");
         }
+        return targetPath;
     }
 
     private String getSessionIdOrUser(Message<Object> inMessage) {
@@ -63,10 +75,10 @@ public class WebSocketController {
         if(session_id != null) {
             result = session_id;
         }
-        Principal principal = inMessage.getHeaders().get(SimpMessageHeaderAccessor.USER_HEADER, Principal.class);
-        if(principal != null) {
-            result = principal.getName();
-        }
+//        Principal principal = inMessage.getHeaders().get(SimpMessageHeaderAccessor.USER_HEADER, Principal.class);
+//        if(principal != null) {
+//            result = principal.getName();
+//        }
         return result;
     }
 

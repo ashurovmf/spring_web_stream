@@ -1,0 +1,4 @@
+docker build --rm=true --tag test_db:1
+docker run --name test_postgres test_db:1
+#test connect
+docker run -it --rm --link test_postgres:postgres postgres psql -h postgres -U postgres
