@@ -26,7 +26,7 @@ public class CustomWebInitializerTest {
 
     @Test
     public void tryToInitWeb() throws Exception {
-        CustomWebInitializer initializer = new CustomWebInitializer();
-        assertTrue("Custom web initializer is created", initializer != null);
+        CustomSecurityInitializer initializer = new CustomSecurityInitializer();
+        assertTrue("Custom security initializer is created", initializer != null);
     }
 }
