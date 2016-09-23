@@ -4,8 +4,11 @@ import com.gft.backend.entities.FileStateMessage;
 import com.gft.backend.entities.FolderNameSearch;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -14,6 +17,8 @@ import org.springframework.messaging.simp.SimpMessageType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import rx.Subscription;
 import rx.functions.Action1;
 
@@ -39,10 +44,27 @@ public class WebSocketController {
     @Autowired
     private SimpMessagingTemplate simpMessagingTemplate;
 
-    @MessageMapping("/add")
+    @RequestMapping("/add/{parent}/{child}/{isDir}")
+    public ResponseEntity<String> addFile(@PathVariable("parent") String parent,
+                                          @PathVariable("child") String child,
+                                          @PathVariable("isDir") boolean isDir){
+        logger.debug("$Should add :" + child + " for " + parent);
+        fileService.addFile(parent,child,isDir);
+        return new ResponseEntity<String>("File have been added",HttpStatus.OK);
+    }
+
+    @RequestMapping("/delete/{parent}/{child}")
+    public ResponseEntity<String> deleteFile(@PathVariable("parent") String parent,
+                                             @PathVariable("child") String child){
+        logger.debug("$Should delete :" + child + " for " + parent);
+        fileService.deleteFile(parent,child);
+        return new ResponseEntity<String>("File have been deleted",HttpStatus.OK);
+    }
+
+    @MessageMapping("/fetch")
     public void fetchFolder(Message<Object> inMessage, @Payload FolderNameSearch folderNameSearch){
         logger.debug("$Receive message with content:" + folderNameSearch.getFolderName());
-        final String authedSender = getSessionIdOrUser(inMessage);
+        String authedSender = getSessionIdOrUser(inMessage);
         Path targetPath = getTargetPath(folderNameSearch);
         logger.debug("$Try to get hierarchy for " + folderNameSearch.getFolderName());
         Subscription subscribe = fileService.getFileHierarchyBasedOnPath(targetPath).subscribe(new Action1<FileStateMessage>() {
@@ -63,7 +85,7 @@ public class WebSocketController {
         Path targetPath = Paths.get(rootPath + folderNameSearch.getFolderName());
         File targetFile = targetPath.toFile();
         if(!targetFile.exists() || !targetFile.isDirectory()){
-            targetPath = rootPath; //targetPath = rootPath; //Paths.get("/data");
+            targetPath = rootPath; //targetPath = rootPath; //Paths.get("/tmp");
         }
         return targetPath;
     }

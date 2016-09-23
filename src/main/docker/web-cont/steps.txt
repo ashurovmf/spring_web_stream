@@ -1,5 +1,13 @@
-docker build --rm=true --tag test_web:1
+docker build --rm=true --tag test_web:1 .
 #includes postgres, extends the image with java opts and volume link
-docker run -it --name test_tomcat --rm --link test_postgres:postgres -p 8888:8080 -e JAVA_OPTS='-Xmx1g' -v ~/Documents/Docker/siudek/:/data test_web:1
-#test connect
+docker run -it --name test_tomcat --rm --link test_postgres:postgres -p 8888:8080 -e JAVA_OPTS='-Xmx1g' test_web:1
+#connect
 curl http://192.168.99.100:8888/webstream/folder
+#Actions
+#add dir or file - template
+curl http://192.168.99.100:8888/webstream/add/{parentDir}/{newFileOrDirName}/{isDir}
+curl http://192.168.99.100:8888/webstream/add/tmp/test_dir/true
+curl http://192.168.99.100:8888/webstream/add/test_dir/test_file/false
+#delete dir or file - template
+curl http://192.168.99.100:8888/webstream/delete/{parentDir}/{Name}
+curl http://192.168.99.100:8888/webstream/delete/test_dir/test_file

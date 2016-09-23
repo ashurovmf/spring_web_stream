@@ -89,7 +89,7 @@ public class FileSystemServiceTest {
     @Test
     public void tryToCreateMesage() throws Exception {
         FileSystemService fileSystemService = (FileSystemService) wac.getBean(FileSystemService.class);
-        FileStateMessage message = fileSystemService.createFileStateMessage(Paths.get(DIR_TEMP2).toFile());
+        FileStateMessage message = fileSystemService.createFileStateMessage(Paths.get(DIR_TEMP2).toFile(),null);
         assertTrue("Message from File is created", !message.getFileName().isEmpty());
         assertEquals(NAME_TEMP2,message.getFileName());
     }

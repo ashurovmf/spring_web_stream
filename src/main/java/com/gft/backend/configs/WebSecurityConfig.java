@@ -46,7 +46,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http.authorizeRequests()
                 .antMatchers("/", "/home/**", "/folder/**", "/resource/**",
-                        "/js/**", "/topic/**", "/add/**").permitAll()
+                        "/js/**", "/topic/**", "/fetch/**", "/user/**", "/add/**",
+                        "/delete/**").permitAll()
                 .antMatchers("/admin/**").access("hasRole('ADMIN')")
                 .antMatchers("/dba/**").access("hasRole('ADMIN') or hasRole('DBA')")
                 .and().logout().logoutSuccessUrl("/login?logout")

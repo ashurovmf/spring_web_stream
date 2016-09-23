@@ -25,7 +25,7 @@ public class AppWebSocketConfig
     }
     @Override
     public void configureStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/add").withSockJS();
+        registry.addEndpoint("/fetch").withSockJS();
     }
 
     @Bean

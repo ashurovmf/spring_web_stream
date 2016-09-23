@@ -1,4 +1,4 @@
 #create image with 'name:version' tag
-docker build --rm=true --tag test_vol:1
+docker build --rm=true --tag test_vol:1 .
 #run image (with /bin/bash) and mount local to remote folder
 docker run -v ~/Documents/Docker/siudek/:/data -it test_vol:1

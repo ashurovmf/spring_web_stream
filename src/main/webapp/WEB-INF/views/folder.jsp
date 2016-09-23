@@ -73,7 +73,7 @@
             document.getElementById('mainDiv').style.visibility = connected ? 'visible' : 'hidden';
         }
         function connect() {
-            var socket = new SockJS('/webstream/add');
+            var socket = new SockJS('/webstream/fetch');
 			stompClient = Stomp.over(socket);
 			// Handle any errors that occur.
             socket.onerror = function(error) {
@@ -96,7 +96,7 @@
         }
         function sendName() {
             var name = document.getElementById('name').value;
-            stompClient.send("/list/add", {}, JSON.stringify({ 'folderName': name}));
+            stompClient.send("/list/fetch", {}, JSON.stringify({ 'folderName': 'temp'}));
             var rootDir = document.getElementById('dirList');
             clearResult(rootDir);
             var rootDir = document.getElementById('rootDir');
@@ -130,16 +130,13 @@
             if ("DEL" === message.state){
                 var rootDir = document.getElementById('dirList');
                 var fileObj = document.getElementById(message.hashId);
-                if("." === message.parent[message.parent.length-1]){
-                    rootDir = fileObj.parentElement;
+                var parentDir = document.getElementById(message.parent[message.parent.length-1]+"_dir");
+                if (parentDir != null){
+                    rootDir = parentDir;
                 }
-                else {
-                    var response = document.getElementById(message.parent[message.parent.length-1]+"_dir");
-                    if (response != null){
-                        rootDir = response;
-                    }
+                if (fileObj != null){
+                    rootDir.removeChild(fileObj);
                 }
-                rootDir.removeChild(fileObj);
             }
 
             //for (var prp in message) {
